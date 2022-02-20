@@ -1,7 +1,8 @@
-use std::fs;
-use std::io::prelude::*;
-use std::io::SeekFrom;
-use std::str;
+use std::{
+    fs,
+    io::{prelude::*, SeekFrom},
+    str,
+};
 
 use fatfs::{DefaultTimeProvider, FatType, FsOptions, LossyOemCpConverter, StdIoWrapper};
 use fscommon::BufStream;
@@ -11,7 +12,8 @@ const FAT12_IMG: &str = "resources/fat12.img";
 const FAT16_IMG: &str = "resources/fat16.img";
 const FAT32_IMG: &str = "resources/fat32.img";
 
-type FileSystem = fatfs::FileSystem<StdIoWrapper<BufStream<fs::File>>, DefaultTimeProvider, LossyOemCpConverter>;
+type FileSystem =
+    fatfs::FileSystem<StdIoWrapper<BufStream<fs::File>>, DefaultTimeProvider, LossyOemCpConverter>;
 
 fn call_with_fs<F: Fn(FileSystem) -> ()>(f: F, filename: &str) {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -120,10 +122,7 @@ fn test_get_dir_by_path(fs: FileSystem) {
     assert_eq!(names2, [".", "..", "test.txt"]);
 
     let root_dir2 = root_dir.open_dir("very/long/path/../../..").unwrap();
-    let root_names = root_dir2
-        .iter()
-        .map(|r| r.unwrap().file_name())
-        .collect::<Vec<String>>();
+    let root_names = root_dir2.iter().map(|r| r.unwrap().file_name()).collect::<Vec<String>>();
     let root_names2 = root_dir.iter().map(|r| r.unwrap().file_name()).collect::<Vec<String>>();
     assert_eq!(root_names, root_names2);
 
@@ -152,9 +151,7 @@ fn test_get_file_by_path(fs: FileSystem) {
     file.read_to_end(&mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), TEST_TEXT);
 
-    let mut file = root_dir
-        .open_file("very-long-dir-name/very-long-file-name.txt")
-        .unwrap();
+    let mut file = root_dir.open_file("very-long-dir-name/very-long-file-name.txt").unwrap();
     let mut buf = Vec::new();
     file.read_to_end(&mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), TEST_TEXT);
@@ -271,8 +268,10 @@ fn test_stats_fat32() {
 fn test_multi_thread() {
     call_with_fs(
         |fs| {
-            use std::sync::{Arc, Mutex};
-            use std::thread;
+            use std::{
+                sync::{Arc, Mutex},
+                thread,
+            };
             let shared_fs = Arc::new(Mutex::new(fs));
             let mut handles = vec![];
             for _ in 0..2 {

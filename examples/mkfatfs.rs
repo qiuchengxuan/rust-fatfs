@@ -1,6 +1,4 @@
-use std::env;
-use std::fs;
-use std::io;
+use std::{env, fs, io};
 
 use fatfs::{format_volume, FormatVolumeOptions, StdIoWrapper};
 use fscommon::BufStream;

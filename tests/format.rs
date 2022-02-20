@@ -1,5 +1,4 @@
-use std::io;
-use std::io::prelude::*;
+use std::{io, io::prelude::*};
 
 use fatfs::{DefaultTimeProvider, LossyOemCpConverter, StdIoWrapper};
 use fscommon::BufStream;
@@ -8,8 +7,11 @@ const KB: u64 = 1024;
 const MB: u64 = KB * 1024;
 const TEST_STR: &str = "Hi there Rust programmer!\n";
 
-type FileSystem =
-    fatfs::FileSystem<StdIoWrapper<BufStream<io::Cursor<Vec<u8>>>>, DefaultTimeProvider, LossyOemCpConverter>;
+type FileSystem = fatfs::FileSystem<
+    StdIoWrapper<BufStream<io::Cursor<Vec<u8>>>>,
+    DefaultTimeProvider,
+    LossyOemCpConverter,
+>;
 
 fn basic_fs_test(fs: &FileSystem) {
     let stats = fs.stats().expect("stats");
@@ -25,9 +27,8 @@ fn basic_fs_test(fs: &FileSystem) {
     assert_eq!(entries.len(), 0);
 
     let subdir1 = root_dir.create_dir("subdir1").expect("create_dir subdir1");
-    let subdir2 = root_dir
-        .create_dir("subdir1/subdir2 with long name")
-        .expect("create_dir subdir2");
+    let subdir2 =
+        root_dir.create_dir("subdir1/subdir2 with long name").expect("create_dir subdir2");
 
     let test_str = TEST_STR.repeat(1000);
     {
@@ -36,9 +37,7 @@ fn basic_fs_test(fs: &FileSystem) {
         file.write_all(test_str.as_bytes()).expect("write file");
     }
 
-    let mut file = root_dir
-        .open_file("subdir1/subdir2 with long name/test file name.txt")
-        .unwrap();
+    let mut file = root_dir.open_file("subdir1/subdir2 with long name/test file name.txt").unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).expect("read_to_string");
     assert_eq!(content, test_str);
@@ -125,14 +124,9 @@ fn test_format_empty_volume_label() {
 #[test]
 fn test_format_volume_label_and_id() {
     let total_bytes = 2 * 1024 * MB;
-    let opts = fatfs::FormatVolumeOptions::new()
-        .volume_id(1234)
-        .volume_label(*b"VOLUMELABEL");
+    let opts = fatfs::FormatVolumeOptions::new().volume_id(1234).volume_label(*b"VOLUMELABEL");
     let fs = test_format_fs(opts, total_bytes);
     assert_eq!(fs.volume_label(), "VOLUMELABEL");
-    assert_eq!(
-        fs.read_volume_label_from_root_dir().unwrap(),
-        Some("VOLUMELABEL".to_string())
-    );
+    assert_eq!(fs.read_volume_label_from_root_dir().unwrap(), Some("VOLUMELABEL".to_string()));
     assert_eq!(fs.volume_id(), 1234);
 }

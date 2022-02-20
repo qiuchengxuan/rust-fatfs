@@ -1,5 +1,7 @@
-use std::fs::OpenOptions;
-use std::io::{self, prelude::*};
+use std::{
+    fs::OpenOptions,
+    io::{self, prelude::*},
+};
 
 use fatfs::{FileSystem, FsOptions};
 use fscommon::BufStream;

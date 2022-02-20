@@ -45,7 +45,8 @@ impl Date {
     }
 
     pub(crate) fn decode(dos_date: u16) -> Self {
-        let (year, month, day) = ((dos_date >> 9) + MIN_YEAR, (dos_date >> 5) & 0xF, dos_date & 0x1F);
+        let (year, month, day) =
+            ((dos_date >> 9) + MIN_YEAR, (dos_date >> 5) & 0xF, dos_date & 0x1F);
         Self { year, month, day }
     }
 
@@ -301,9 +302,6 @@ mod tests {
         use super::TimeZone;
         let chrono_date_time = super::Local.ymd(2016, 12, 31).and_hms_milli(23, 59, 59, 1999);
         let date_time = DateTime::from(chrono_date_time);
-        assert_eq!(
-            date_time,
-            DateTime::new(Date::new(2016, 12, 31), Time::new(23, 59, 59, 999))
-        );
+        assert_eq!(date_time, DateTime::new(Date::new(2016, 12, 31), Time::new(23, 59, 59, 999)));
     }
 }

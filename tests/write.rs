@@ -1,8 +1,4 @@
-use std::fs;
-use std::io;
-use std::io::prelude::*;
-use std::mem;
-use std::str;
+use std::{fs, io, io::prelude::*, mem, str};
 
 use fatfs::{DefaultTimeProvider, FsOptions, LossyOemCpConverter, StdIoWrapper};
 use fscommon::BufStream;
@@ -15,7 +11,8 @@ const TMP_DIR: &str = "tmp";
 const TEST_STR: &str = "Hi there Rust programmer!\n";
 const TEST_STR2: &str = "Rust is cool!\n";
 
-type FileSystem = fatfs::FileSystem<StdIoWrapper<BufStream<fs::File>>, DefaultTimeProvider, LossyOemCpConverter>;
+type FileSystem =
+    fatfs::FileSystem<StdIoWrapper<BufStream<fs::File>>, DefaultTimeProvider, LossyOemCpConverter>;
 
 fn call_with_tmp_img<F: Fn(&str) -> ()>(f: F, filename: &str, test_seq: u32) {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -144,24 +141,17 @@ fn test_create_file(fs: FileSystem) {
         assert!(root_dir.create_file("very/long/path/:").is_err());
         assert!(root_dir.create_file("very/long/path/\0").is_err());
         // create file
-        let mut file = root_dir
-            .create_file("very/long/path/new-file-with-long-name.txt")
-            .unwrap();
+        let mut file = root_dir.create_file("very/long/path/new-file-with-long-name.txt").unwrap();
         file.write_all(&TEST_STR.as_bytes()).unwrap();
     }
     // check for dir entry
     names = dir.iter().map(|r| r.unwrap().file_name()).collect::<Vec<String>>();
     assert_eq!(names, [".", "..", "test.txt", "new-file-with-long-name.txt"]);
-    names = dir
-        .iter()
-        .map(|r| r.unwrap().short_file_name())
-        .collect::<Vec<String>>();
+    names = dir.iter().map(|r| r.unwrap().short_file_name()).collect::<Vec<String>>();
     assert_eq!(names, [".", "..", "TEST.TXT", "NEW-FI~1.TXT"]);
     {
         // check contents
-        let mut file = root_dir
-            .open_file("very/long/path/new-file-with-long-name.txt")
-            .unwrap();
+        let mut file = root_dir.open_file("very/long/path/new-file-with-long-name.txt").unwrap();
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         assert_eq!(&content, &TEST_STR);
@@ -175,9 +165,7 @@ fn test_create_file(fs: FileSystem) {
     assert_eq!(names.len(), 4 + 512 / 32);
     // check creating existing file opens it
     {
-        let mut file = root_dir
-            .create_file("very/long/path/new-file-with-long-name.txt")
-            .unwrap();
+        let mut file = root_dir.create_file("very/long/path/new-file-with-long-name.txt").unwrap();
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
         assert_eq!(&content, &TEST_STR);
@@ -204,10 +192,7 @@ fn test_create_file_fat32() {
 fn test_create_dir(fs: FileSystem) {
     let root_dir = fs.root_dir();
     let parent_dir = root_dir.open_dir("very/long/path").unwrap();
-    let mut names = parent_dir
-        .iter()
-        .map(|r| r.unwrap().file_name())
-        .collect::<Vec<String>>();
+    let mut names = parent_dir.iter().map(|r| r.unwrap().file_name()).collect::<Vec<String>>();
     assert_eq!(names, [".", "..", "test.txt"]);
     {
         let subdir = root_dir.create_dir("very/long/path/new-dir-with-long-name").unwrap();
@@ -215,10 +200,7 @@ fn test_create_dir(fs: FileSystem) {
         assert_eq!(names, [".", ".."]);
     }
     // check if new entry is visible in parent
-    names = parent_dir
-        .iter()
-        .map(|r| r.unwrap().file_name())
-        .collect::<Vec<String>>();
+    names = parent_dir.iter().map(|r| r.unwrap().file_name()).collect::<Vec<String>>();
     assert_eq!(names, [".", "..", "test.txt", "new-dir-with-long-name"]);
     {
         // Check if new directory can be opened and read
@@ -247,10 +229,7 @@ fn test_create_dir(fs: FileSystem) {
     // check short names validity after create_dir
     {
         let subdir = root_dir.create_dir("test").unwrap();
-        names = subdir
-            .iter()
-            .map(|r| r.unwrap().short_file_name())
-            .collect::<Vec<String>>();
+        names = subdir.iter().map(|r| r.unwrap().short_file_name()).collect::<Vec<String>>();
         assert_eq!(names, [".", ".."]);
     }
 
@@ -292,15 +271,10 @@ fn test_rename_file(fs: FileSystem) {
     file.read_to_end(&mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), TEST_STR2);
 
-    parent_dir
-        .rename("new-long-name.txt", &root_dir, "moved-file.txt")
-        .unwrap();
+    parent_dir.rename("new-long-name.txt", &root_dir, "moved-file.txt").unwrap();
     let entries = root_dir.iter().map(|r| r.unwrap()).collect::<Vec<_>>();
     let names = entries.iter().map(|r| r.file_name()).collect::<Vec<_>>();
-    assert_eq!(
-        names,
-        ["long.txt", "short.txt", "very", "very-long-dir-name", "moved-file.txt"]
-    );
+    assert_eq!(names, ["long.txt", "short.txt", "very", "very-long-dir-name", "moved-file.txt"]);
     assert_eq!(entries[4].len(), TEST_STR2.len() as u64);
     let mut file = root_dir.open_file("moved-file.txt").unwrap();
     let mut buf = Vec::new();
@@ -310,10 +284,7 @@ fn test_rename_file(fs: FileSystem) {
     assert!(root_dir.rename("moved-file.txt", &root_dir, "short.txt").is_err());
     let entries = root_dir.iter().map(|r| r.unwrap()).collect::<Vec<_>>();
     let names = entries.iter().map(|r| r.file_name()).collect::<Vec<_>>();
-    assert_eq!(
-        names,
-        ["long.txt", "short.txt", "very", "very-long-dir-name", "moved-file.txt"]
-    );
+    assert_eq!(names, ["long.txt", "short.txt", "very", "very-long-dir-name", "moved-file.txt"]);
 
     assert!(root_dir.rename("moved-file.txt", &root_dir, "moved-file.txt").is_ok());
 
@@ -380,12 +351,7 @@ fn test_multiple_files_in_directory(fs: FileSystem) {
         file.write_all(TEST_STR.as_bytes()).unwrap();
         file.flush().unwrap();
 
-        let file = dir
-            .iter()
-            .map(|r| r.unwrap())
-            .filter(|e| e.file_name() == name)
-            .next()
-            .unwrap();
+        let file = dir.iter().map(|r| r.unwrap()).filter(|e| e.file_name() == name).next().unwrap();
 
         assert_eq!(TEST_STR.len() as u64, file.len(), "Wrong file len on iteration {}", i);
     }

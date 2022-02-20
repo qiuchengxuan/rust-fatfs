@@ -1,6 +1,4 @@
-use std::env;
-use std::fs::File;
-use std::io;
+use std::{env, fs::File, io};
 
 use chrono::{DateTime, Local};
 use fatfs::{FileSystem, FsOptions};
@@ -33,9 +31,8 @@ fn main() -> io::Result<()> {
     };
     for r in dir.iter() {
         let e = r?;
-        let modified = DateTime::<Local>::from(e.modified())
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string();
+        let modified =
+            DateTime::<Local>::from(e.modified()).format("%Y-%m-%d %H:%M:%S").to_string();
         println!("{:4}  {}  {}", format_file_size(e.len()), modified, e.file_name());
     }
     Ok(())

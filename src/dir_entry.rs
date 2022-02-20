@@ -1,21 +1,20 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
 use bitflags::bitflags;
-use core::char;
-use core::convert::TryInto;
-use core::fmt;
 #[cfg(not(feature = "unicode"))]
 use core::iter;
-use core::str;
+use core::{char, convert::TryInto, fmt, str};
 
 #[cfg(feature = "lfn")]
 use crate::dir::LfnBuffer;
-use crate::dir::{Dir, DirRawStream};
-use crate::error::{Error, IoError};
-use crate::file::File;
-use crate::fs::{FatType, FileSystem, OemCpConverter, ReadWriteSeek};
-use crate::io::{self, Read, ReadLeExt, Write, WriteLeExt};
-use crate::time::{Date, DateTime};
+use crate::{
+    dir::{Dir, DirRawStream},
+    error::{Error, IoError},
+    file::File,
+    fs::{FatType, FileSystem, OemCpConverter, ReadWriteSeek},
+    io::{self, Read, ReadLeExt, Write, WriteLeExt},
+    time::{Date, DateTime},
+};
 
 bitflags! {
     /// A FAT file attributes.
@@ -72,14 +71,8 @@ pub(crate) struct ShortName {
 impl ShortName {
     pub(crate) fn new(raw_name: &[u8; SFN_SIZE]) -> Self {
         // get name components length by looking for space character
-        let name_len = raw_name[0..8]
-            .iter()
-            .rposition(|x| *x != SFN_PADDING)
-            .map_or(0, |p| p + 1);
-        let ext_len = raw_name[8..11]
-            .iter()
-            .rposition(|x| *x != SFN_PADDING)
-            .map_or(0, |p| p + 1);
+        let name_len = raw_name[0..8].iter().rposition(|x| *x != SFN_PADDING).map_or(0, |p| p + 1);
+        let ext_len = raw_name[8..11].iter().rposition(|x| *x != SFN_PADDING).map_or(0, |p| p + 1);
         let mut name = [SFN_PADDING; 12];
         name[..name_len].copy_from_slice(&raw_name[..name_len]);
         let total_len = if ext_len > 0 {
@@ -96,10 +89,7 @@ impl ShortName {
             name[0] = 0xE5;
         }
         // Short names in FAT filesystem are encoded in OEM code-page
-        Self {
-            name,
-            len: total_len as u8,
-        }
+        Self { name, len: total_len as u8 }
     }
 
     fn as_bytes(&self) -> &[u8] {
@@ -109,11 +99,7 @@ impl ShortName {
     #[cfg(feature = "alloc")]
     fn to_string<OCC: OemCpConverter>(&self, oem_cp_converter: &OCC) -> String {
         // Strip non-ascii characters from short name
-        self.as_bytes()
-            .iter()
-            .copied()
-            .map(|c| oem_cp_converter.decode(c))
-            .collect()
+        self.as_bytes().iter().copied().map(|c| oem_cp_converter.decode(c)).collect()
     }
 
     fn eq_ignore_case<OCC: OemCpConverter>(&self, name: &str, oem_cp_converter: &OCC) -> bool {
@@ -145,11 +131,7 @@ pub(crate) struct DirFileEntryData {
 
 impl DirFileEntryData {
     pub(crate) fn new(name: [u8; SFN_SIZE], attrs: FileAttributes) -> Self {
-        Self {
-            name,
-            attrs,
-            ..Self::default()
-        }
+        Self { name, attrs, ..Self::default() }
     }
 
     pub(crate) fn renamed(&self, new_name: [u8; SFN_SIZE]) -> Self {
@@ -175,11 +157,7 @@ impl DirFileEntryData {
     }
 
     pub(crate) fn first_cluster(&self, fat_type: FatType) -> Option<u32> {
-        let first_cluster_hi = if fat_type == FatType::Fat32 {
-            self.first_cluster_hi
-        } else {
-            0
-        };
+        let first_cluster_hi = if fat_type == FatType::Fat32 { self.first_cluster_hi } else { 0 };
         let n = (u32::from(first_cluster_hi) << 16) | u32::from(self.first_cluster_lo);
         if n == 0 {
             None
@@ -252,19 +230,20 @@ impl DirFileEntryData {
         self.modify_time = date_time.time.encode().0;
     }
 
-    pub(crate) fn serialize<W: Write>(&self, wrt: &mut W) -> Result<(), W::Error> {
-        wrt.write_all(&self.name)?;
-        wrt.write_u8(self.attrs.bits())?;
-        wrt.write_u8(self.reserved_0)?;
-        wrt.write_u8(self.create_time_0)?;
-        wrt.write_u16_le(self.create_time_1)?;
-        wrt.write_u16_le(self.create_date)?;
-        wrt.write_u16_le(self.access_date)?;
-        wrt.write_u16_le(self.first_cluster_hi)?;
-        wrt.write_u16_le(self.modify_time)?;
-        wrt.write_u16_le(self.modify_date)?;
-        wrt.write_u16_le(self.first_cluster_lo)?;
-        wrt.write_u32_le(self.size)?;
+    #[deasync::deasync]
+    pub(crate) async fn serialize<W: Write>(&self, wrt: &mut W) -> Result<(), W::Error> {
+        wrt.write_all(&self.name).await?;
+        wrt.write_u8(self.attrs.bits()).await?;
+        wrt.write_u8(self.reserved_0).await?;
+        wrt.write_u8(self.create_time_0).await?;
+        wrt.write_u16_le(self.create_time_1).await?;
+        wrt.write_u16_le(self.create_date).await?;
+        wrt.write_u16_le(self.access_date).await?;
+        wrt.write_u16_le(self.first_cluster_hi).await?;
+        wrt.write_u16_le(self.modify_time).await?;
+        wrt.write_u16_le(self.modify_date).await?;
+        wrt.write_u16_le(self.first_cluster_lo).await?;
+        wrt.write_u32_le(self.size).await?;
         Ok(())
     }
 
@@ -300,12 +279,7 @@ pub(crate) struct DirLfnEntryData {
 
 impl DirLfnEntryData {
     pub(crate) fn new(order: u8, checksum: u8) -> Self {
-        Self {
-            order,
-            checksum,
-            attrs: FileAttributes::LFN,
-            ..Self::default()
-        }
+        Self { order, checksum, attrs: FileAttributes::LFN, ..Self::default() }
     }
 
     pub(crate) fn copy_name_from_slice(&mut self, lfn_part: &[u16; LFN_PART_LEN]) {
@@ -321,20 +295,21 @@ impl DirLfnEntryData {
         lfn_part[11..13].copy_from_slice(&self.name_2);
     }
 
-    pub(crate) fn serialize<W: Write>(&self, wrt: &mut W) -> Result<(), W::Error> {
-        wrt.write_u8(self.order)?;
+    #[deasync::deasync]
+    pub(crate) async fn serialize<W: Write>(&self, wrt: &mut W) -> Result<(), W::Error> {
+        wrt.write_u8(self.order).await?;
         for ch in &self.name_0 {
-            wrt.write_u16_le(*ch)?;
+            wrt.write_u16_le(*ch).await?;
         }
-        wrt.write_u8(self.attrs.bits())?;
-        wrt.write_u8(self.entry_type)?;
-        wrt.write_u8(self.checksum)?;
+        wrt.write_u8(self.attrs.bits()).await?;
+        wrt.write_u8(self.entry_type).await?;
+        wrt.write_u8(self.checksum).await?;
         for ch in &self.name_1 {
-            wrt.write_u16_le(*ch)?;
+            wrt.write_u16_le(*ch).await?;
         }
-        wrt.write_u16_le(self.reserved_0)?;
+        wrt.write_u16_le(self.reserved_0).await?;
         for ch in &self.name_2 {
-            wrt.write_u16_le(*ch)?;
+            wrt.write_u16_le(*ch).await?;
         }
         Ok(())
     }
@@ -367,18 +342,26 @@ pub(crate) enum DirEntryData {
 }
 
 impl DirEntryData {
-    pub(crate) fn serialize<E: IoError, W: Write<Error = Error<E>>>(&self, wrt: &mut W) -> Result<(), Error<E>> {
+    #[deasync::deasync]
+    pub(crate) async fn serialize<E: IoError, W>(&self, wrt: &mut W) -> Result<(), Error<E>>
+    where
+        W: Write<Error = Error<E>>,
+    {
         trace!("DirEntryData::serialize");
         match self {
-            DirEntryData::File(file) => file.serialize(wrt),
-            DirEntryData::Lfn(lfn) => lfn.serialize(wrt),
+            DirEntryData::File(file) => file.serialize(wrt).await,
+            DirEntryData::Lfn(lfn) => lfn.serialize(wrt).await,
         }
     }
 
-    pub(crate) fn deserialize<E: IoError, R: Read<Error = Error<E>>>(rdr: &mut R) -> Result<Self, Error<E>> {
+    #[deasync::deasync]
+    pub(crate) async fn deserialize<E: IoError, R>(rdr: &mut R) -> Result<Self, Error<E>>
+    where
+        R: Read<Error = Error<E>>,
+    {
         trace!("DirEntryData::deserialize");
         let mut name = [0; SFN_SIZE];
-        match rdr.read_exact(&mut name) {
+        match rdr.read_exact(&mut name).await {
             Err(Error::UnexpectedEof) => {
                 // entries can occupy all clusters of directory so there is no zero entry at the end
                 // handle it here by returning non-existing empty entry
@@ -392,10 +375,7 @@ impl DirEntryData {
         let attrs = FileAttributes::from_bits_truncate(rdr.read_u8()?);
         if attrs & FileAttributes::LFN == FileAttributes::LFN {
             // read long name entry
-            let mut data = DirLfnEntryData {
-                attrs,
-                ..DirLfnEntryData::default()
-            };
+            let mut data = DirLfnEntryData { attrs, ..DirLfnEntryData::default() };
             // divide the name into order and LFN name_0
             data.order = name[0];
             for (dst, src) in data.name_0.iter_mut().zip(name[1..].chunks_exact(2)) {
@@ -462,13 +442,10 @@ pub(crate) struct DirEntryEditor {
     dirty: bool,
 }
 
+#[deasync::deasync]
 impl DirEntryEditor {
     fn new(data: DirFileEntryData, pos: u64) -> Self {
-        Self {
-            data,
-            pos,
-            dirty: false,
-        }
+        Self { data, pos, dirty: false }
     }
 
     pub(crate) fn inner(&self) -> &DirFileEntryData {
@@ -513,18 +490,24 @@ impl DirEntryEditor {
         }
     }
 
-    pub(crate) fn flush<IO: ReadWriteSeek, TP, OCC>(&mut self, fs: &FileSystem<IO, TP, OCC>) -> Result<(), IO::Error> {
+    pub(crate) async fn flush<IO: ReadWriteSeek, TP, OCC>(
+        &mut self,
+        fs: &FileSystem<IO, TP, OCC>,
+    ) -> Result<(), IO::Error> {
         if self.dirty {
-            self.write(fs)?;
+            self.write(fs).await?;
             self.dirty = false;
         }
         Ok(())
     }
 
-    fn write<IO: ReadWriteSeek, TP, OCC>(&self, fs: &FileSystem<IO, TP, OCC>) -> Result<(), IO::Error> {
+    async fn write<IO: ReadWriteSeek, TP, OCC>(
+        &self,
+        fs: &FileSystem<IO, TP, OCC>,
+    ) -> Result<(), IO::Error> {
         let mut disk = fs.disk.borrow_mut();
         disk.seek(io::SeekFrom::Start(self.pos))?;
-        self.data.serialize(&mut *disk)
+        self.data.serialize(&mut *disk).await
     }
 }
 
@@ -737,7 +720,8 @@ mod tests {
             ShortName::new(b"\x99OOK AT M \x99").to_string(&oem_cp_conv),
             "\u{FFFD}OOK AT.M \u{FFFD}"
         );
-        assert!(ShortName::new(b"\x99OOK AT M \x99").eq_ignore_case("\u{FFFD}OOK AT.M \u{FFFD}", &oem_cp_conv));
+        assert!(ShortName::new(b"\x99OOK AT M \x99")
+            .eq_ignore_case("\u{FFFD}OOK AT.M \u{FFFD}", &oem_cp_conv));
     }
 
     #[test]
@@ -751,8 +735,10 @@ mod tests {
     fn short_name_eq_ignore_case() {
         let oem_cp_conv = LossyOemCpConverter::new();
         let raw_short_name: &[u8; SFN_SIZE] = b"\x99OOK AT M \x99";
-        assert!(ShortName::new(raw_short_name).eq_ignore_case("\u{FFFD}OOK AT.M \u{FFFD}", &oem_cp_conv));
-        assert!(ShortName::new(raw_short_name).eq_ignore_case("\u{FFFD}ook AT.m \u{FFFD}", &oem_cp_conv));
+        assert!(ShortName::new(raw_short_name)
+            .eq_ignore_case("\u{FFFD}OOK AT.M \u{FFFD}", &oem_cp_conv));
+        assert!(ShortName::new(raw_short_name)
+            .eq_ignore_case("\u{FFFD}ook AT.m \u{FFFD}", &oem_cp_conv));
     }
 
     #[test]

@@ -39,7 +39,9 @@ impl From<Error<std::io::Error>> for std::io::Error {
     fn from(error: Error<Self>) -> Self {
         match error {
             Error::Io(io_error) => io_error,
-            Error::UnexpectedEof | Error::NotEnoughSpace => Self::new(std::io::ErrorKind::UnexpectedEof, error),
+            Error::UnexpectedEof | Error::NotEnoughSpace => {
+                Self::new(std::io::ErrorKind::UnexpectedEof, error)
+            }
             Error::WriteZero => Self::new(std::io::ErrorKind::WriteZero, error),
             Error::InvalidInput
             | Error::InvalidFileNameLength

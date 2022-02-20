@@ -1,6 +1,8 @@
-use std::env;
-use std::fs::File;
-use std::io::{self, prelude::*};
+use std::{
+    env,
+    fs::File,
+    io::{self, prelude::*},
+};
 
 use fatfs::{FileSystem, FsOptions};
 use fscommon::BufStream;

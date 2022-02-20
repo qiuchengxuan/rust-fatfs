@@ -1,11 +1,12 @@
-use core::cmp;
-use core::convert::TryFrom;
+use core::{cmp, convert::TryFrom};
 
-use crate::dir_entry::DirEntryEditor;
-use crate::error::Error;
-use crate::fs::{FileSystem, ReadWriteSeek};
-use crate::io::{IoBase, Read, Seek, SeekFrom, Write};
-use crate::time::{Date, DateTime, TimeProvider};
+use crate::{
+    dir_entry::DirEntryEditor,
+    error::Error,
+    fs::{FileSystem, ReadWriteSeek},
+    io::{IoBase, Read, Seek, SeekFrom, Write},
+    time::{Date, DateTime, TimeProvider},
+};
 
 const MAX_FILE_SIZE: u32 = core::u32::MAX;
 
@@ -243,7 +244,8 @@ impl<IO: ReadWriteSeek, TP: TimeProvider, OCC> Read for File<'_, IO, TP, OCC> {
             return Ok(0);
         }
         trace!("read {} bytes in cluster {}", read_size, current_cluster);
-        let offset_in_fs = self.fs.offset_from_cluster(current_cluster) + u64::from(offset_in_cluster);
+        let offset_in_fs =
+            self.fs.offset_from_cluster(current_cluster) + u64::from(offset_in_cluster);
         let read_bytes = {
             let mut disk = self.fs.disk.borrow_mut();
             disk.seek(SeekFrom::Start(offset_in_fs))?;
@@ -323,7 +325,8 @@ impl<IO: ReadWriteSeek, TP: TimeProvider, OCC> Write for File<'_, IO, TP, OCC> {
             }
         };
         trace!("write {} bytes in cluster {}", write_size, current_cluster);
-        let offset_in_fs = self.fs.offset_from_cluster(current_cluster) + u64::from(offset_in_cluster);
+        let offset_in_fs =
+            self.fs.offset_from_cluster(current_cluster) + u64::from(offset_in_cluster);
         let written_bytes = {
             let mut disk = self.fs.disk.borrow_mut();
             disk.seek(SeekFrom::Start(offset_in_fs))?;
@@ -367,9 +370,9 @@ impl<IO: ReadWriteSeek, TP, OCC> Seek for File<'_, IO, TP, OCC> {
         trace!("File::seek");
         let size_opt = self.size();
         let new_offset_opt: Option<u32> = match pos {
-            SeekFrom::Current(x) => i64::from(self.offset)
-                .checked_add(x)
-                .and_then(|n| u32::try_from(n).ok()),
+            SeekFrom::Current(x) => {
+                i64::from(self.offset).checked_add(x).and_then(|n| u32::try_from(n).ok())
+            }
             SeekFrom::Start(x) => u32::try_from(x).ok(),
             SeekFrom::End(o) => size_opt
                 .and_then(|s| i64::from(s).checked_add(o))
